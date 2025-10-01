@@ -1,0 +1,261 @@
+{% extends "templates/web.html" %}
+{% from "webshop/templates/includes/order/order_macros.html" import item_name_and_description %}
+{% from "templates/includes/macros.html" import product_image %}
+
+{% block breadcrumbs %}
+	{% include "templates/includes/breadcrumbs.html" %}
+{% endblock %}
+
+{% block title %}
+	{{ doc.name }}
+{% endblock %}
+
+{% block header %}
+ <style>
+  .product-banner {
+    background: linear-gradient(90deg, #570987, #2d2c2c);
+    color: #ffffff;
+    padding: 4rem 0;
+}
+.breadcrumb_a a {
+    font-size: 1rem;
+    color: #ffffff;
+    font-weight: 700;
+    text-decoration: none;
+     /*opacity: 0.8; */
+    transition: opacity 0.3s ease;
+}
+ 
+.breadcrumb_a span {
+    margin: 0 9px;
+    color: #ffffff;
+}
+ 
+.product-banner-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    padding-top: 2rem;
+}
+</style>
+<section class="product-banner mb-5">
+<div class="container-fluid">
+  <nav class="breadcrumb_a">
+<a href="/">Home</a> <span>/</span> <a href="/all-products">All Products</a><span>/</span> <a href="/orders">Orders</a><span>/</span> <a href="">{{ doc.name }}</a>
+</nav>
+<h1 class="product-banner-title">{{ doc.name }}</h1>
+</div>
+</section>
+{% endblock %}
+
+
+{% block page_content %}
+	<div class="container pb-6">
+		 <div class="card shadow-sm mb-4">
+    <div class="card-body row align-items-center">
+      <div class="col-md-6 mb-2">
+        <div class="badge bg-info text-light p-2 px-3 text-uppercase me-2">
+          {{ _(doc.get('indicator_title')) or _(doc.status) or _("Submitted") }}
+        </div>
+        <div class="text-muted mt-2 small">
+          {{ frappe.utils.format_date(doc.transaction_date, "medium") }}
+          {% if doc.valid_till %}
+            • {{ _("Valid Till") }}: {{ frappe.utils.format_date(doc.valid_till, "medium") }}
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-6 text-end">
+        <h5 class="mb-0">
+          {%- set party_name = doc.supplier_name if doc.doctype in ['Supplier Quotation', 'Purchase Invoice', 'Purchase Order'] else doc.customer_name -%}
+          {{ party_name }}
+        </h5>
+        {% if doc.contact_display and doc.contact_display != party_name %}
+        <div class="text-muted small">{{ doc.contact_display }}</div>
+        {% endif %}
+        {% if enabled_checkout and (doc.doctype != "Sales Invoice" or doc.outstanding_amount > 0) %}
+          <a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart" class="btn btn-sm btn-success mt-2">
+            {{ _("Pay") }} {{ doc.get_formatted("grand_total") }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+		{% if doc._header %}
+			{{ doc._header }}
+		{% endif %}
+  		
+  		<style>
+			.order-item-row:hover {
+				background-color: #f9f9f9;
+			}
+			.order-image img {
+				max-width: 60px;
+				max-height: 60px;
+				object-fit: cover;
+				border-radius: 4px;
+			}
+
+		</style>
+		<div class="order-container mt-4">
+			<div class="card shadow-sm">
+				<div class="card-header bg-light text-muted font-weight-bold">
+					<div class="row">
+						<div class="col-md-5">{{ _("Item") }}</div>
+						<div class="col-md-3">{{ _("Quantity") }}</div>
+						<div class="col-md-2">{{ _("Rate") }}</div>
+						<div class="col-md-2 text-right">{{ _("Amount") }}</div>
+					</div>
+				</div>
+				<div class="card-body p-0">
+					{% for d in doc.items %}
+					<div class="row align-items-center py-3 px-3 border-bottom order-item-row">
+						<div class="col-md-5">
+							<div class="d-flex align-items-start">
+								<div class="order-image mr-2">
+									{% set website_item_list = frappe.get_all("Website Item", filters={"item_code": d.item_code}, limit=1) %}
+									{% if website_item_list %}
+										{% set website_item = frappe.get_doc("Website Item", website_item_list[0].name) %}
+										{% if website_item.website_image %}
+											{{ product_image(website_item.website_image, no_border=True) }}
+										{% endif %}
+									{% else %}
+										<div class="no-image-cart-item bg-secondary text-white text-center rounded" style="width: 60px; height: 60px;">
+											{{ frappe.utils.get_abbr(d.item_name) or "NA" }}
+										</div>
+									{% endif %}
+								</div>
+								<div>
+									<strong>{{ d.item_code }}</strong>
+									<div class="text-muted small">
+										{{ html2text(d.description or "") | truncate(100) }}
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-md-3">{{ d.get_formatted("qty") }}</div>
+						<div class="col-md-2">{{ d.get_formatted("rate") }}</div>
+						<div class="col-md-2 text-right font-weight-bold">{{ d.get_formatted("amount") }}</div>
+					</div>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+
+
+			<!-- taxes -->
+			<div class="">
+				{% include "webshop/templates/includes/order/order_taxes.html" %}
+			</div>
+		</div>
+	</div>
+
+	{% if enabled_checkout and ((doc.doctype=="Sales Order" and doc.per_billed <= 0)
+		or (doc.doctype=="Sales Invoice" and doc.outstanding_amount> 0)) %}
+		<div class="panel panel-default">
+			<div class="panel-collapse">
+				<div class="panel-body text-muted small">
+					<div class="row">
+						<div class="form-column col-sm-6">
+							{% if available_loyalty_points %}
+							<div class="panel-heading">
+								<div class="row">
+									<div class="form-column col-sm-6 address-title">
+										<strong>Loyalty Points</strong>
+									</div>
+								</div>
+							</div>
+
+							<div class="form-group">
+								<div class="h6">Enter Loyalty Points</div>
+								<div class="control-input-wrapper">
+									<div class="control-input">
+										<input class="form-control" type="number" min="0"
+											max="{{ available_loyalty_points }}" id="loyalty-point-to-redeem">
+									</div>
+									<p class="help-box small text-muted d-none d-sm-block"> Available Points: {{
+										available_loyalty_points }} </p>
+								</div>
+							</div>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+
+	{% if attachments %}
+		<div class="order-item-table">
+			<div class="row order-items order-item-header text-muted">
+				<div class="col-sm-12 h6 text-uppercase">
+					{{ _("Attachments") }}
+				</div>
+			</div>
+			<div class="row order-items">
+				<div class="col-sm-12">
+					{% for attachment in attachments %}
+					<p class="small">
+						<a href="{{ attachment.file_url }}" target="blank"> {{ attachment.file_name }} </a>
+					</p>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+	{% endif %}
+
+	{% if doc.terms %}
+		<div class="terms-and-condition text-muted small">
+			<hr>
+			<p>{{ doc.terms }}</p>
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block script %}
+	<script> {% include "templates/pages/order.js" %}</script>
+	<script>
+		window.doc_info = {
+			customer: '{{doc.customer}}',
+			doctype: '{{ doc.doctype }}',
+			doctype_name: '{{ doc.name }}',
+			grand_total: '{{ doc.grand_total }}',
+			currency: '{{ doc.currency }}'
+		}
+	</script>
+	<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		const element = document.querySelector('.container');
+		const element2 = document.querySelector('.container .my-4');
+		const breadcrumbs = document.querySelector('.page-breadcrumbs');
+		const header = document.querySelector('.page-header');
+		const pageheader = document.querySelector('.page-header-wrapper');
+
+		if (pageheader){
+			pageheader.classList.add('p-0');
+		}
+		if (header){
+			header.style.width = "100%";
+		}
+		if (breadcrumbs) {
+			breadcrumbs.style.display = "none";
+		}
+		if (element) {
+			element.classList.remove('container');
+			element.classList.remove('my-4');
+			}
+		if (element2) {
+		element2.classList.remove('container');
+		element2.classList.add('container-fluid');
+		element2.classList.add('p-0');
+		element2.classList.remove('my-4');
+		element.classList.add('bg-white');
+		}
+     }
+  )
+  
+
+</script>
+{% endblock %} 
