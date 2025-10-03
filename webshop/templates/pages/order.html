@@ -1,4 +1,4 @@
-{% extends "templates/web.html" %}
+{#{% extends "templates/web.html" %}
 {% from "webshop/templates/includes/order/order_macros.html" import item_name_and_description %}
 {% from "templates/includes/macros.html" import product_image %}
 
@@ -212,6 +212,272 @@
 			<p>{{ doc.terms }}</p>
 		</div>
 	{% endif %}
+{% endblock %}#}
+
+{% extends "templates/web.html" %}
+{% from "webshop/templates/includes/order/order_macros.html" import item_name_and_description %}
+{% from "templates/includes/macros.html" import product_image %}
+
+{% block breadcrumbs %}
+    {% include "templates/includes/breadcrumbs.html" %}
+{% endblock %}
+
+{% block title %}
+    {{ doc.name }}
+{% endblock %}
+
+{% block header %}
+<style>
+/* Banner */
+.product-banner {
+    background: linear-gradient(90deg, #570987, #2d2c2c);
+    color: #ffffff;
+    padding: 4rem 0;
+}
+.breadcrumb_a a {
+    font-size: 1rem;
+    color: #ffffff;
+    font-weight: 700;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+.breadcrumb_a span {
+    margin: 0 9px;
+    color: #ffffff;
+}
+.product-banner-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+    padding-top: 2rem;
+}
+</style>
+<section class="product-banner mb-5">
+    <div class="container-fluid">
+        <nav class="breadcrumb_a">
+            <a href="/">Home</a> <span>/</span> 
+            <a href="/all-products">All Products</a> <span>/</span> 
+            <a href="/orders">Orders</a><span>/</span> 
+            <a href="">{{ doc.name }}</a>
+        </nav>
+        <h1 class="product-banner-title">{{ doc.name }}</h1>
+    </div>
+</section>
+{% endblock %}
+{% block page_content %}
+<style>
+    .order-page {
+        background-color: #f2f2f2;
+        color: white;
+        font-family: 'Segoe UI', sans-serif;
+		border-radius: 8px;
+		padding: 20px;
+    }
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #ffffff;
+		border-radius: 8px;
+		color: black;
+    }
+    .header-left .btn-orange {
+        background-color: orange;
+        color: white;
+        font-weight: bold;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+    }
+    .header-right .admin-label {
+        color: white;
+        font-weight: bold;
+        margin-right: 1rem;
+    }
+    .header-right .btn-orange {
+        background-color: orange;
+        color: black;
+        font-weight: bold;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+    }
+    .items-table {
+        width: 100%;
+        margin-top: 2rem;
+        background: #000c3f;
+        color: white;
+        border: 2px solid #ddd;
+
+    }
+    .items-table thead {
+        border-bottom: 2px solid #444;
+        font-weight: bold;
+    }
+	.items-table th {
+        padding: 1rem;
+        vertical-align: middle;
+		background: #590088;
+    }
+    .items-table td{
+        padding: 1rem;
+        vertical-align: middle;
+		background: #f2f2f2;
+		color: black;
+    }
+    .items-table tr{
+		border-bottom: 1px solid #ddd;
+	}
+    .item-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 6px;
+        margin-right: 1rem;
+        object-fit: cover;
+    }
+    .summary-totals {
+        margin-top: 2rem;
+        padding: 1rem;
+        border-top: 1px solid #555;
+        color: black;
+        font-size: 1rem;
+    }
+    .summary-totals div {
+		color: black;
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+	.order-taxes {
+		color: #000;
+		border-radius: 8px;
+	}
+</style>
+
+<div class="order-page container mb-5">
+
+    <!-- Header -->
+    <div class="header-bar">
+      <div class="col-md-6 mb-2">
+        <div class="badge bg-info text-light p-2 text-uppercase me-2" style="border: 1px solid #590088;
+    background: #ffffff !important;
+    color: #000000 !important;">
+          {{ _(doc.get('indicator_title')) or _(doc.status) or _("Submitted") }}
+        </div>
+        <div class=" mt-2 small">
+          {{ frappe.utils.format_date(doc.transaction_date, "medium") }}
+          {% if doc.valid_till %}
+            • {{ _("Valid Till") }}: {{ frappe.utils.format_date(doc.valid_till, "medium") }}
+          {% endif %}
+        </div>
+      </div>
+        <div class="col-md-6 text-end">
+        <h5 class="mb-0">
+          {%- set party_name = doc.supplier_name if doc.doctype in ['Supplier Quotation', 'Purchase Invoice', 'Purchase Order'] else doc.customer_name -%}
+          {{ party_name }}
+        </h5>
+        {% if doc.contact_display and doc.contact_display != party_name %}
+        <div class="text-muted small">{{ doc.contact_display }}</div>
+        {% endif %}
+        {% if enabled_checkout and (doc.doctype != "Sales Invoice" or doc.outstanding_amount > 0) %}
+          <a href="/api/method/erpnext.accounts.doctype.payment_request.payment_request.make_payment_request?dn={{ doc.name }}&dt={{ doc.doctype }}&submit_doc=1&order_type=Shopping Cart" class="btn btn-sm btn-success mt-2" style="border: 1px solid aqua;
+    background: aqua !important;
+    color: #fff !important;">
+            <b>{{ _("Pay") }} {{ doc.get_formatted("grand_total") }}</b>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Item Table -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="text-start ">Item</th>
+                <th class="text-center px-0">Quantity</th>
+                <th class="text-center px-0">Rate</th>
+                <th class="text-end">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in doc.items %}
+            <tr>
+                <td style="display: flex; align-items: center;">
+                    {% set website_item_list = frappe.get_all("Website Item", filters={"item_code": d.item_code}, limit=1) %}
+                    {% if website_item_list %}
+                        {% set website_item = frappe.get_doc("Website Item", website_item_list[0].name) %}
+                        {% if website_item.website_image %}
+                            <img src="{{ website_item.website_image }}" class="item-img" alt="{{ d.item_code }}">
+                        {% endif %}
+                    {% endif %}
+                    <div>
+                        {{ d.item_name }}<br>
+                        <small class="text-black">{{ d.description }}</small>
+                    </div>
+                </td>
+                <td class="text-center px-0">{{ d.get_formatted("qty") }}</td>
+                <td class="text-center px-0">{{ d.get_formatted("rate") }}</td>
+                <td class="text-end">{{ d.get_formatted("amount") }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Taxes & Payment Summary -->
+    <div class="mb-4">
+        {% include "webshop/templates/includes/order/order_taxes.html" %}
+    </div>
+
+    <!-- Loyalty Points -->
+    {% if enabled_checkout and ((doc.doctype=="Sales Order" and doc.per_billed <= 0) or (doc.doctype=="Sales Invoice" and doc.outstanding_amount> 0)) %}
+    
+        {% if available_loyalty_points %}
+		<div class="card shadow-sm mb-4 p-3">
+        <h6 class="fw-bold mb-2">{{ _("Redeem Loyalty Points") }}</h6>
+        <div class="d-flex align-items-center gap-3">
+            <input class="form-control w-auto" type="number" min="0" max="{{ available_loyalty_points }}" id="loyalty-point-to-redeem">
+            <small class="text-muted">Available Points: {{ available_loyalty_points }}</small>
+        </div>
+		   </div>
+        {% endif %}
+ 
+    {% endif %}
+
+    <!-- Attachments -->
+    {% if attachments %}
+    <div class="card shadow-sm mb-4 p-3">
+        <h6 class="fw-bold mb-2">{{ _("Attachments") }}</h6>
+        <ul class="list-unstyled mb-0">
+            {% for attachment in attachments %}
+            <li><a href="{{ attachment.file_url }}" target="_blank">{{ attachment.file_name }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Terms & Conditions -->
+    {% if doc.terms %}
+		<div class="card shadow-sm mb-4 p-3 text-muted">
+			<h6 class="fw-bold mb-2">{{ _("Terms & Conditions") }}</h6>
+			<p>{{ doc.terms }}</p>
+		</div>
+    {% endif %}
+
+</div>
+
+<style>
+.order-item-row:hover {
+    background-color: #f9f9f9;
+}
+.order-image img {
+    max-width: 60px;
+    max-height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+</style>
 {% endblock %}
 
 {% block script %}

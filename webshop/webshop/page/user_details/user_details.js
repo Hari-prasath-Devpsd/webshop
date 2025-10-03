@@ -1,12 +1,10 @@
-frappe.pages['test'].on_page_load = function(wrapper) {
-    var page = frappe.ui.make_app_page({
-        parent: wrapper,
-        title: 'User Details',
-        single_column: true
-    });
-
-    // Load user details
-    frappe.call({
+frappe.pages['user-details'].on_page_load = function(wrapper) {
+	var page = frappe.ui.make_app_page({
+		parent: wrapper,
+		title: 'User Details',
+		single_column: true
+	});
+	frappe.call({
         method: "frappe.client.get",
         args: {
             doctype: "User",
@@ -60,4 +58,4 @@ frappe.pages['test'].on_page_load = function(wrapper) {
             }
         }
     });
-};
+}

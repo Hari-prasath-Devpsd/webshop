@@ -61,7 +61,7 @@
 
 {% if doc.items %}
 <div class="row">
-	<div class="cart-container container bg-white p-4 col-md-8 col-12" style="margin-left: 40PX;">
+	<div class="cart-container container bg-white p-4 col-md-8 col-12 rounded shadow" style="margin-left: 40px;margin-right: 20px;">
 		<div class="row m-0">
 			<!-- Left section -->
 			<div class="col-md-12">
@@ -133,7 +133,7 @@
 			{% endif %}
 		</div>
 	</div>
-	<div class="col-md-4 col-12">
+	<div class="col-md-3 col-12">
 				<div class="cart-payment-addresses">
 					<!-- Apply Coupon Code  -->
 					{% set show_coupon_code = cart_settings.show_apply_coupon_code_in_website and cart_settings.enable_checkout %}
@@ -153,7 +153,7 @@
 						{% endif %}
 					{% endif %}
 
-					<div class="mb-3 frappe-card">
+					<div class="mb-3 frappe-card rounded shadow p-4">
 						<div class="payment-summary">
 							{% include "templates/includes/cart/cart_payment_summary.html" %}
 						</div>
